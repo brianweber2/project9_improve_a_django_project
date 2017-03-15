@@ -15,3 +15,13 @@ class MenuForm(forms.ModelForm):
     class Meta:
         model = Menu
         exclude = ('created_date',)
+
+    def clean(self):
+        data = self.cleaned_data
+        season = data.get('season')
+
+        if not season:
+            raise forms.ValidationError(
+                "A season name is required."
+        )
+        return data
