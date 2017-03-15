@@ -1,6 +1,8 @@
+{% load static from staticfiles %}
+
 <html>
     <head>
-        <title>Soda Fountain</title>
+        <title>{% block title %}Soda Fountain{% endblock %}</title>
         <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css">
         <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap-theme.min.css">
     </head>
@@ -11,16 +13,6 @@
             {% endif %}
             <h1><a href="/">Soda Fountain</a></h1>
         </div>
-        <div class="content container">
-            <div class="row">
-                <div class="col-md-8">
-                    <h1>Change menu</h1>
-                    <form method="POST" class="menu-form">{% csrf_token %}
-                        {{ form.as_p }}
-                        <button type="submit" class="save btn btn-default">Save</button>
-                    </form>
-                </div>
-            </div>
-        </div>
+        {% block content %}{% endblock %}
     </body>
 </html>
