@@ -1,6 +1,7 @@
 from django.test import TestCase
 from django.core.urlresolvers import reverse
 from django.conf import settings
+from django.contrib.auth.models import User
 
 from .models import Menu, Item, Ingredient
 from .forms import MenuForm
@@ -22,8 +23,31 @@ menu_data2 = {
 ################################
 class MenuViewsTest(TestCase):
     def setUp(self):
+        self.test_user = User.objects.create(
+            username='test_user',
+            email='testemail@gmail.com',
+            password='testing'
+        )
+        ingredient1 = Ingredient(name='chocolate')
+        ingredient1.save()
+        ingredient2 = Ingredient(name='strawberry')
+        ingredient2.save()
+        ingredient3 = Ingredient(name='banana')
+        ingredient3.save()
+        self.item1 = Item(
+            name='Item 1',
+            description='testing items',
+            chef=self.test_user
+        )
+        self.item1.save()
+        self.item1.ingredients.add(ingredient1, ingredient2)
         self.menu1 = Menu.objects.create(**menu_data1)
+        self.menu1.items.add(self.item1)
         self.menu2 = Menu.objects.create(**menu_data2)
+        self.menu2.items.add(self.item1)
+
+    def tearDown(self):
+        self.test_user.delete()
 
     def test_menu_list_view(self):
         resp = self.client.get(reverse('menu_list'))
@@ -31,7 +55,7 @@ class MenuViewsTest(TestCase):
         self.assertIn(self.menu1, resp.context['menus'])
         self.assertIn(self.menu2, resp.context['menus'])
         self.assertTemplateUsed(resp, 'menu/list_all_current_menus.html')
-        self.assertContains(resp, self.menu.season)
+        self.assertContains(resp, self.menu1.season)
 
     def test_menu_detail_view(self):
         resp = self.client.get(reverse('menu_detail',
@@ -60,8 +84,14 @@ class MenuViewsTest(TestCase):
 
 class ItemViewsTest(TestCase):
     def test_item_detail_view(self):
-        resp = self.client.get(reverse('item_detail', kwargs={'pk': 1}))
+        resp = self.client.get(reverse('item_detail',
+            kwargs={'pk': self.item1.pk}))
         self.assertEqual(resp.status_code, 200)
+        self.assertTemplateUsed('menu/detail_item.html')
+
+    def test_item_detail_view_404(self):
+        resp = self.client.get(reverse('item_detail', kwargs={'pk': 1}))
+        self.assertEqual(resp.status_code, 404)
         self.assertTemplateUsed('menu/detail_item.html')
 
 
@@ -73,13 +103,21 @@ class IngredientViewsTest(TestCase):
 ########## Form Tests ##########
 #################################
 class MenuFormsTest(TestCase):
-    def test_menu_create_form(self):
+    def test_menu_create_form_good_data(self):
         form_data = {'season': 'Winter',
-            'items': ['chocolate', 'granola'],
+            'items': self.item1,
             'expiration_date': '03/20/2020'
         }
         form = MenuForm(data=form_data)
         self.assertTrue(form.is_valid())
+        menu = form.save()
+        self.assertEqual(menu.season, 'Winter')
+        self.assertEqual(menu.expiration_date, '03/20/2020')
+        self.assertEqual(menu.items, self.item1)
+
+    def test_menu_create_form_blank_data(self):
+        form = MenuForm(data={})
+        self.assertFalse(form.is_valid())
 
 
 #################################
